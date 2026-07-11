@@ -29,6 +29,10 @@ public class NetworkController : MonoBehaviour
 
     void Start()
     {
+
+        standardUIGroup.SetActive(true);
+        fiducialUIGroup.SetActive(false);
+        
         client = new MqttClient(brokerIpAddress, brokerPort, false, null, null, MqttSslProtocols.None);
         client.MqttMsgPublishReceived += OnMessageReceived;
 
