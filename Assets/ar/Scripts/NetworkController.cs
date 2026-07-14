@@ -99,4 +99,17 @@ public class NetworkController : MonoBehaviour
     {
         if (client != null && client.IsConnected) client.Disconnect();
     }
+    // This allows outside scripts to send messages through this controller
+    public void PublishTelemetry(string topic, string payload)
+    {
+        if (client != null && client.IsConnected)
+        {
+            client.Publish(
+                topic, 
+                System.Text.Encoding.UTF8.GetBytes(payload), 
+                uPLibrary.Networking.M2Mqtt.Messages.MqttMsgBase.QOS_LEVEL_AT_MOST_ONCE, 
+                false
+            );
+        }
+    }
 }
