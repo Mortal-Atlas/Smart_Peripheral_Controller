@@ -1,26 +1,33 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class ArtemisButton : MonoBehaviour
 {
-    [Header("MQTT Settings")]
-    [Tooltip("The MQTT topic Home Assistant will listen to")]
-    public string topic = "vr/artemis/toggle";
+    [Header("Home Assistant MQTT Settings")]
+    [Tooltip("The exact MQTT topic that Home Assistant is listening to for this plug.")]
+    public string mqttTopic = "rika/haos/artemis/toggle";
     
-    [Tooltip("The message to send")]
-    public string payload = "TOGGLE";
+    [Tooltip("The command to send. Usually 'toggle', 'on', or 'off'.")]
+    public string commandPayload = "toggle";
 
-    // This is the function the standard UI button will trigger
-    public void ToggleSwitch()
+    /// <summary>
+    /// Link this method to your UI Button's OnClick() event in the Inspector.
+    /// </summary>
+    public void OnButtonToggled()
     {
-        // We use the Singleton instance of the NetworkController we built earlier
-        if (NetworkController.Instance != null)
+        if (PhoneMqttBridge.Instance != null)
         {
-            NetworkController.Instance.PublishCommand(topic, payload);
-            Debug.Log("Artemis UI Button Pressed: Command sent to broker.");
+            // Instantly blasts the toggle command to the Raspberry Pi
+            PhoneMqttBridge.Instance.PublishMessage(mqttTopic, commandPayload);
+            
+            // Optional: Give the phone a tiny physical buzz so you know you tapped it
+            #if UNITY_ANDROID && !UNITY_EDITOR
+            Handheld.Vibrate();
+            #endif
         }
         else
         {
-            Debug.LogError("NetworkController is missing from the scene!");
+            Debug.LogWarning("[Artemis] Cannot toggle plug. MQTT Bridge is offline.");
         }
     }
 }
