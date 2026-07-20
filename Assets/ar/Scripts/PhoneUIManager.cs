@@ -2,47 +2,31 @@ using UnityEngine;
 
 public class PhoneUIManager : MonoBehaviour
 {
-    [Header("UI Modes")]
-    [Tooltip("The parent GameObject containing all your standard app buttons.")]
+    [Header("UI Panels")]
     public GameObject standardUIPanel;
-    
-    [Tooltip("The pitch-black canvas panel that acts as the VR trackpad.")]
     public GameObject trackpadBlackScreen;
 
-    [Header("Components to Toggle")]
-    [Tooltip("Drag your Main Camera here so we can turn off the trackpad script when VR is off.")]
-    public PhoneTrackpad trackpadScript;
-
-    private void Start()
+    void Start()
     {
-        PhoneMqttBridge.Instance.OnVRStatusChanged += HandleVRStatusChange;
-        
-        // Default to Standard UI on boot until the broker tells us otherwise
-        SetUIMode(false);
+        // FAILSAFE: Always force the standard UI on when the app boots up,
+        // just in case we have no Wi-Fi or left the wrong screen on in the Editor!
+        if (standardUIPanel != null) standardUIPanel.SetActive(true);
+        if (trackpadBlackScreen != null) trackpadBlackScreen.SetActive(false);
     }
 
-    private void OnDestroy()
+    // Called by the MQTT Bridge when the VR headset is confirmed ON
+    public void SwitchToTrackpad()
     {
-        if (PhoneMqttBridge.Instance != null)
-        {
-            PhoneMqttBridge.Instance.OnVRStatusChanged -= HandleVRStatusChange;
-        }
+        if (standardUIPanel != null) standardUIPanel.SetActive(false);
+        if (trackpadBlackScreen != null) trackpadBlackScreen.SetActive(true);
+        Debug.Log("[UI] Swapped to VR Trackpad Mode");
     }
 
-    private void HandleVRStatusChange(bool isVrOnline)
+    // Called by the MQTT Bridge when the VR headset is confirmed OFF
+    public void SwitchToStandardUI()
     {
-        SetUIMode(isVrOnline);
-    }
-
-    private void SetUIMode(bool vrIsActive)
-    {
-        if (standardUIPanel != null) 
-            standardUIPanel.SetActive(!vrIsActive); // On when VR is off
-            
-        if (trackpadBlackScreen != null) 
-            trackpadBlackScreen.SetActive(vrIsActive); // On when VR is on
-
-        if (trackpadScript != null)
-            trackpadScript.enabled = vrIsActive; // Only capture thumb swipes when VR is active
+        if (trackpadBlackScreen != null) trackpadBlackScreen.SetActive(false);
+        if (standardUIPanel != null) standardUIPanel.SetActive(true);
+        Debug.Log("[UI] Swapped to Standard Button Mode");
     }
 }

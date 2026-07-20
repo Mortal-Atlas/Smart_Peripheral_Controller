@@ -22,6 +22,8 @@ public class PhoneMqttBridge : M2MqttUnityClient
     public string margoUser = "rika";
     public string margoPass = "12345";
 
+    private float connectionTime = 0f;
+
     protected override void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -48,8 +50,17 @@ public class PhoneMqttBridge : M2MqttUnityClient
     protected override void OnConnected()
     {
         base.OnConnected();
+        connectionTime = Time.time; // Mark the exact time we connected
+        
+        // 1. Tell the Pi to burn the old ghost sticky note
+        client.Publish("vr/status", new byte[0], MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, true);
+
+        // 2. Subscribe to the topics
         client.Subscribe(new string[] { "rika/phone/camera", "vr/status", "rika/response", "rika/phone/rumble" }, 
             new byte[] { MqttMsgBase.QOS_LEVEL_AT_MOST_ONCE, MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, MqttMsgBase.QOS_LEVEL_AT_MOST_ONCE, MqttMsgBase.QOS_LEVEL_AT_MOST_ONCE });
+            
+        // 3. Ping the network to see if the VR headset is currently active
+        PublishMessage("vr/status/ping", "ping");
             
         Debug.Log("[Margo Bridge] Phone connected to the hive mind.");
     }
@@ -60,6 +71,16 @@ public class PhoneMqttBridge : M2MqttUnityClient
         
         if (topic == "vr/status")
         {
+            if (string.IsNullOrEmpty(payload)) return;
+
+            // BOOT GUARD: Ignore any status messages that arrive within 2 seconds of booting up.
+            // This prevents the Mosquitto broker from feeding us a ghost sticky note before it gets deleted!
+            if (Time.time - connectionTime < 2.0f)
+            {
+                Debug.LogWarning("[Margo Bridge] Ignored a ghost vr/status message during boot sequence.");
+                return;
+            }
+
             bool isVrOnline = (payload == "online");
             Debug.Log($"[Margo Bridge] VR Headset status changed to: {payload}");
             _mainThreadActions.Enqueue(() => OnVRStatusChanged?.Invoke(isVrOnline));

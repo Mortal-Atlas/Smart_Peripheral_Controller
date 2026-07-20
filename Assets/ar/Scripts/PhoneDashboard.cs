@@ -8,6 +8,10 @@ public class PhoneDashboard : MonoBehaviour
     public TextMeshProUGUI timeText;
     public TextMeshProUGUI weatherText;
 
+    [Header("AR Toggle")]
+    public PhoneCameraManager cameraManager;
+    private bool isMargoSummoned = false;
+
     [Header("Network")]
     public PhoneMqttBridge mqttBridge;
 
@@ -19,12 +23,11 @@ public class PhoneDashboard : MonoBehaviour
         
         // Initial updates
         UpdateTime();
-        weatherText.text = "72°F | Clear"; // Placeholder until we link your Pi's weather integration
+        if (weatherText != null) weatherText.text = "72°F | Clear"; 
     }
 
     void Update()
     {
-        // Only update the clock string once every ~60 frames to save CPU
         minuteTimer += Time.deltaTime;
         if (minuteTimer > 1f)
         {
@@ -46,20 +49,36 @@ public class PhoneDashboard : MonoBehaviour
     public void OnQuickFeedPressed()
     {
         Debug.Log("[Dashboard] Quick Feed activated.");
-        // Sends a command to the headset to top off the familiar's health/hunger
-        mqttBridge.PublishMessage("rika/pet/action", "quick_feed");
+        if (mqttBridge != null) mqttBridge.PublishMessage("rika/pet/action", "quick_feed");
     }
 
     public void OnQuickEquipPressed()
     {
         Debug.Log("[Dashboard] Quick Equip activated.");
-        // Sends a command to auto-equip the highest tier item
-        mqttBridge.PublishMessage("rika/pet/action", "quick_equip");
+        if (mqttBridge != null) mqttBridge.PublishMessage("rika/pet/action", "quick_equip");
     }
 
     public void OnRestoreEnergyPressed()
     {
         Debug.Log("[Dashboard] Restoring Energy.");
-        mqttBridge.PublishMessage("rika/pet/action", "restore_energy");
+        if (mqttBridge != null) mqttBridge.PublishMessage("rika/pet/action", "restore_energy");
+    }
+
+    public void OnSummonTogglePressed()
+    {
+        isMargoSummoned = !isMargoSummoned;
+        Debug.Log($"[Dashboard] Summon toggled: {isMargoSummoned}");
+        
+        // 1. Toggle local Android camera
+        if (cameraManager != null)
+        {
+            cameraManager.ToggleCamera();
+        }
+
+        // 2. Tell VR Headset to show/hide Margo physically
+        string commandStr = isMargoSummoned ? "materialize" : "poof";
+        string payload = $"{{\"command\": \"{commandStr}\"}}";
+        
+        if (mqttBridge != null) mqttBridge.PublishMessage("rika/commands", payload);
     }
 }
